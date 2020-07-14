@@ -3,6 +3,7 @@ const { Schema, model } = require('mongoose');
 const Address = require('./Address');
 
 const { encrypt, check } = require('../lib/encryption');
+const { sign } = require('../lib/authentication');
 
 const UserSchema = new Schema(
   {
@@ -19,7 +20,6 @@ const UserSchema = new Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     password: {
@@ -48,6 +48,7 @@ UserSchema.virtual('fullName').get(function () {
 //Mongoose hooks: Whenever saving the document, before saving convert the password to hash.
 //Because it is also middleware, we next it.
 UserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
   this.password = await encrypt(this.password);
   next();
 });
@@ -74,6 +75,13 @@ UserSchema.method('toJSON', function () {
     fullName: this.fullName,
     address: this.address,
   };
+});
+
+const tokenSecret = 'fsdfkljsglkj7dfgljfghkljlkdfsjglkdfg3';
+
+UserSchema.method('generateAuthToken', async function () {
+  const token = await sign({ _id: this._id, access: 'auth' }, tokenSecret);
+  return token;
 });
 
 module.exports = model('User', UserSchema);

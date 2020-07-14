@@ -68,7 +68,8 @@ exports.loginUser = async (req, res, next) => {
     if (!loginUser) throw new createError.Unauthorized();
     const isAuthenticated = await loginUser.authenticate(req.body.password);
     if (!isAuthenticated) throw new createError.Unauthorized();
-    res.status(200).send(loginUser);
+    const token = await loginUser.generateAuthToken();
+    res.header('X-Auth-Token', token).status(200).send(loginUser);
   } catch (err) {
     next(err);
   }
