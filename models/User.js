@@ -3,7 +3,7 @@ const { Schema, model } = require('mongoose');
 const Address = require('./Address');
 
 const { encrypt, check } = require('../lib/encryption');
-const { sign } = require('../lib/authentication');
+const { sign, verify } = require('../lib/authentication');
 
 const UserSchema = new Schema(
   {
@@ -29,6 +29,12 @@ const UserSchema = new Schema(
     address: {
       type: Address,
       required: true,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      required: true,
+      default: 'user',
     },
   },
   {
@@ -77,10 +83,30 @@ UserSchema.method('toJSON', function () {
   };
 });
 
+// Add a static method that checks for whether the ID inside a JWT token can be found in the database
+// Important: Schema methods only work with document instances. Since we need to find a document first, we need to create a static.
+
 const tokenSecret = 'fsdfkljsglkj7dfgljfghkljlkdfsjglkdfg3';
 
+UserSchema.static('findByToken', async function (token) {
+  //If there is a token, we check for whether it is created with its own secret(its validity). Verify method returns payload. It converts the encoded token to the object.
+  let payload;
+  try {
+    payload = await verify(token, tokenSecret);
+  } catch (error) {
+    return null;
+  }
+  // we are checking for whether there is a user with this ID inside the payload.
+  const user = await this.findOne({ _id: payload._id });
+  return user;
+});
+
+// Add a method that generates a JWT token that includes the current user
 UserSchema.method('generateAuthToken', async function () {
   const token = await sign({ _id: this._id, access: 'auth' }, tokenSecret);
+  // const token = await sign({ _id: this._id, access: 'auth' }, tokenSecret, {
+  //   expiresIn: '1m',
+  // });
   return token;
 });
 

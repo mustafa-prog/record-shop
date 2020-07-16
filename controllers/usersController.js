@@ -14,7 +14,7 @@ exports.getUsers = async (req, res, next) => {
 
 exports.addUser = async (req, res, next) => {
   try {
-    const newUser = new User(req.body);
+    const newUser = new User({ ...req.body, role: 'user' });
     await newUser.save();
     res.status(201).send(newUser);
   } catch (err) {
@@ -38,10 +38,14 @@ exports.updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) throw new createError.NotFound();
-    const updated = await User.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const updated = await User.findByIdAndUpdate(
+      id,
+      { ...req.body, role: 'user' },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
     if (!updated) throw new createError.NotFound();
     res.status(200).send(updated);
   } catch (err) {
